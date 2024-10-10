@@ -1,7 +1,9 @@
-// ignore_for_file: avoid_print
+// lib/providers/task_provider.dart
 
-import 'package:daily_planner/utils/datebase_helper.dart';
+import 'package:daily_planner/alarm_service.dart';
+import 'package:daily_planner/main.dart';
 import 'package:flutter/material.dart';
+import 'package:daily_planner/utils/datebase_helper.dart';
 import '../models/task.dart';
 import 'package:uuid/uuid.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -47,12 +49,24 @@ class TaskProvider with ChangeNotifier {
     _tasks.add(newTask);
     notifyListeners();
 
-    // Check permission before scheduling notification
+    // Check permission before scheduling alarm
     if (await _hasScheduleExactAlarmPermission()) {
-      // Schedule notification
+      // Set system alarm on Android
+      if (Theme.of(navigatorKey.currentContext!).platform ==
+          TargetPlatform.android) {
+        int hour = newTask.time.hour;
+        int minute = newTask.time.minute;
+        String message = newTask.title;
+        bool alarmSet = await AlarmService.setAlarm(hour, minute, message);
+        if (!alarmSet) {
+          print('Failed to set alarm for task: ${newTask.title}');
+        }
+      } else {
+        print('Alarm setting not supported on this platform.');
+      }
     } else {
       print(
-          'Exact alarm permission not granted. Notification not scheduled for task: ${newTask.title}');
+          'Exact alarm permission not granted. Alarm not set for task: ${newTask.title}');
     }
   }
 
@@ -64,13 +78,7 @@ class TaskProvider with ChangeNotifier {
       _tasks[index] = task;
       notifyListeners();
 
-      // Check permission before scheduling notification
-      if (await _hasScheduleExactAlarmPermission()) {
-        // Reschedule notification
-      } else {
-        print(
-            'Exact alarm permission not granted. Notification not rescheduled for task: ${task.title}');
-      }
+      // Similar alarm update logic can be added here if needed
     }
   }
 
